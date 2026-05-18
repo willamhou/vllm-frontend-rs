@@ -298,9 +298,9 @@ impl UtilityRegistry {
     /// Drop a batch of registered utility calls without delivering a result.
     /// Used to roll back allocations when the dispatch fan-out fails before
     /// every engine could accept the request.
-    pub fn unregister_many(&mut self, call_ids: &[i64]) {
+    pub fn unregister_many(&mut self, call_ids: impl IntoIterator<Item = i64>) {
         for call_id in call_ids {
-            self.utility_calls.remove(call_id);
+            self.utility_calls.remove(&call_id);
         }
     }
 
@@ -647,7 +647,7 @@ mod tests {
         let (call_id_3, _rx_3) = registry.allocate_and_register();
 
         // Drop two of the three allocated calls; the third stays pending.
-        registry.unregister_many(&[call_id_1, call_id_2]);
+        registry.unregister_many([call_id_1, call_id_2]);
 
         assert!(!registry.contains(call_id_1));
         assert!(!registry.contains(call_id_2));
@@ -663,7 +663,7 @@ mod tests {
         let (call_id, _rx) = registry.allocate_and_register();
 
         // Unknown call ids are silently ignored — caller doesn't care which were live.
-        registry.unregister_many(&[call_id, 42, 9999]);
+        registry.unregister_many([call_id, 42, 9999]);
 
         assert!(!registry.contains(call_id));
     }

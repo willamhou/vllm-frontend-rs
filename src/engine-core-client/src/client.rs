@@ -510,9 +510,7 @@ impl EngineCoreClient {
             let (call_id, rx) = match self.inner.allocate_and_register_utility_call() {
                 Ok(pair) => pair,
                 Err(err) => {
-                    self.inner.unregister_utility_calls(
-                        &pending_calls.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
-                    );
+                    self.inner.unregister_utility_calls(pending_calls.iter().map(|(id, _)| *id));
                     return Err(err);
                 }
             };
@@ -524,14 +522,14 @@ impl EngineCoreClient {
             ) {
                 Ok(request) => request,
                 Err(err) => {
-                    let mut ids: Vec<i64> = pending_calls.iter().map(|(id, _)| *id).collect();
-                    ids.push(call_id);
-                    self.inner.unregister_utility_calls(&ids);
+                    self.inner.unregister_utility_calls(
+                        pending_calls.iter().map(|(id, _)| *id).chain(std::iter::once(call_id)),
+                    );
                     return Err(err);
                 }
             };
             pending_calls.push((call_id, rx));
-            prepared_sends.push((engine.engine_id.clone(), request));
+            prepared_sends.push((&engine.engine_id, request));
         }
 
         // Phase 2: dispatch every utility request concurrently. `try_join_all`
@@ -543,8 +541,7 @@ impl EngineCoreClient {
             self.inner.send_to_engine(engine_id, EngineCoreRequestType::Utility, request)
         });
         if let Err(err) = try_join_all(send_futures).await {
-            let ids: Vec<i64> = pending_calls.iter().map(|(id, _)| *id).collect();
-            self.inner.unregister_utility_calls(&ids);
+            self.inner.unregister_utility_calls(pending_calls.iter().map(|(id, _)| *id));
             return Err(err);
         }
 

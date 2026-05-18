@@ -83,7 +83,7 @@ impl ClientInner {
     /// Undo a batch of utility call allocations when the fan-out send fails
     /// partway through. Silently ignores unknown call ids so callers can pass
     /// the full set without first filtering successful sends.
-    pub fn unregister_utility_calls(&self, call_ids: &[i64]) {
+    pub fn unregister_utility_calls(&self, call_ids: impl IntoIterator<Item = i64>) {
         self.utility_reg.lock().unregister_many(call_ids);
     }
 
